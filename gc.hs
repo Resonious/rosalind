@@ -55,8 +55,8 @@ insertNewEntry entries (_:name) = (name, ""):entries
 
 -- Updates the head entry by appending `line` to its data.
 updateLastEntry :: [(String, String)] -> String -> [(String, String)]
-updateLastEntry (e:entries) line =
-  ((fst e), (snd e) ++ line) : entries
+updateLastEntry ((name, dat):others) line =
+  (name, dat ++ line) : others
 
 
 -- Parses `line` and appends to / modifies `entries` accordingly.
