@@ -30,7 +30,7 @@ formatResult (name, value) = name ++ "\n" ++ (show value)
 
 main = do
   contents <- getContents
-  putStrLn $ formatResult (entryWithMaxValue (map entryGcContent (parseLines contents)))
+  putStrLn $ formatResult $ entryWithMaxValue $ map entryGcContent (parseLines contents)
 
 --main = do
 --  contents <- getContents
