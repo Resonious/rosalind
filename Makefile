@@ -1,4 +1,9 @@
 
+iprb: iprb.hs
+	stack ghc $?
+	./$@
+
+
 hamm: hamm.hs
 	stack ghc $?
 	./$@
