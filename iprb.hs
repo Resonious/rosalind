@@ -45,6 +45,7 @@ popTotal population =
 
 
 -- Remove one organism from the population
+-- This kinda assumes the the given Population already has all possible keys..
 popRemove :: Organism -> Population -> Population
 popRemove organism population =
   Map.insertWith (-) organism 1 $ population
