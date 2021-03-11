@@ -1,4 +1,5 @@
 import qualified Data.Map as Map
+import Control.Monad (replicateM)
 
 -- k homozygous dominant
 -- m heterozygous
@@ -19,45 +20,49 @@ import qualified Data.Map as Map
 -- pr(R&R) = [n / (k + m + n)] * [(n - 1) / (k + m + n - 1)]
 
 
-data Organism = HomozygousDominent | Heterozygous | HomozygousRecessive
+data Organism = HomozygousDominant | Heterozygous | HomozygousRecessive
   deriving (Eq, Show, Ord, Bounded, Enum)
 
-data Allele = Dominent | Recessive
+data Allele = Dominant | Recessive
   deriving (Eq, Show, Ord, Bounded, Enum)
 
 type Population = Map.Map Organism Int
 
 
+-- Everything!!
+allOrganisms = [HomozygousDominant .. HomozygousRecessive]
+
+
 -- Construct new population with `k`, `m`, and `n`.
 newPopulation :: Int -> Int -> Int -> Population
-newPopulation k m n = Map.fromList [(HomozygousDominent, k), (Heterozygous, m), (HomozygousRecessive, n)]
+newPopulation k m n = Map.fromList [(HomozygousDominant, k), (Heterozygous, m), (HomozygousRecessive, n)]
 
 
 -- Get alleles for an organism
 allelesOf :: Organism -> Map.Map Allele Int
-allelesOf HomozygousDominent  = Map.fromList [(Dominent, 2), (Recessive, 0)]
-allelesOf Heterozygous        = Map.fromList [(Dominent, 1), (Recessive, 1)]
-allelesOf HomozygousRecessive = Map.fromList [(Dominent, 0), (Recessive, 2)]
+allelesOf HomozygousDominant  = Map.fromList [(Dominant, 2), (Recessive, 0)]
+allelesOf Heterozygous        = Map.fromList [(Dominant, 1), (Recessive, 1)]
+allelesOf HomozygousRecessive = Map.fromList [(Dominant, 0), (Recessive, 2)]
 
 
 -- Number of `organism`s inside `population`
-popCount :: (Ord a) => a -> Map.Map a Int -> Float
-popCount key population =
+count :: (Ord a) => a -> Map.Map a Int -> Float
+count key population =
   countFor $ Map.lookup key population
   where countFor (Just val) = fromIntegral val
         countFor Nothing    = 0.0
 
 
 -- Total number of organisms inside of `population`
-popTotal :: (Ord a) => Map.Map a Int -> Float
-popTotal population =
+total :: (Ord a) => Map.Map a Int -> Float
+total population =
   fromIntegral $ sum $ Map.elems population
 
 
 -- Remove one organism from the population
 -- This kinda assumes the the given Population already has all possible keys..
-popRemove :: (Ord a) => a -> Map.Map a Int -> Map.Map a Int
-popRemove key population =
+remove :: (Ord a) => a -> Map.Map a Int -> Map.Map a Int
+remove key population =
   Map.insertWith (-) key 1 $ population
 
 
@@ -65,39 +70,45 @@ popRemove key population =
 prPickList :: (Ord a) => [a] -> Map.Map a Int -> Float
 prPickList [key] population = prPickOne key population
 prPickList (key:others) population =
-  (prPickOne key population) * (prPickList others $ popRemove key population)
+  (prPickOne key population) * (prPickList others $ remove key population)
 
 
 -- Probability of picking one organism from the given population
 prPickOne :: (Ord a) => a -> Map.Map a Int -> Float
 prPickOne key population =
-  (popCount key population) / (popTotal population)
+  (count key population) / (total population)
 
 
--- TODO
--- TODO
--- TODO
--- TODO
--- TODO is this useable? the "population" changes a bit differently once we're talking about alleles...
--- TODO before, it's one pop but now it's two. pr(pick one form a) and pr(pick one from b) now...
--- TODO
--- TODO
--- TODO
-prDominent :: Organism -> Float
-prDominent organism =
-  (popCount Dominent a) / (popTotal a)
-  where a = allelesOf organism
+-- Probability of the given 2 organisms of hatching a dominant offspring
+prDominantOffspring :: Organism -> Organism -> Float
+prDominantOffspring organism1 organism2 =
+  (pr Dominant organism1Alleles)  * (pr Dominant organism2Alleles)  +
+  (pr Dominant organism1Alleles)  * (pr Recessive organism2Alleles) +
+  (pr Recessive organism1Alleles) * (pr Dominant organism2Alleles)
+  where organism1Alleles = allelesOf organism1
+        organism2Alleles = allelesOf organism2
+        pr allele x = (count allele x) / (total x)
+
+
+-- Probability of picking these 2 organisms, AND them producing a dominant offspring
+prPickAndDominant :: Organism -> Organism -> Population -> Float
+prPickAndDominant organism1 organism2 population =
+  (prPickList [organism1, organism2] population) * (prDominantOffspring organism1 organism2)
 
 
 main = do
-  -- print $ popCount HomozygousRecessive $ newPopulation 1 2 3
-  -- print $ popTotal $ newPopulation 1 2 3
-  -- print $ popRemove HomozygousDominent $ newPopulation 1 2 3
-  -- print $ prPickList [HomozygousDominent, HomozygousRecessive] (newPopulation 1 2 3)
+  -- print $ count HomozygousRecessive $ newPopulation 1 2 3
+  -- print $ total $ newPopulation 1 2 3
+  -- print $ remove HomozygousDominant $ newPopulation 1 2 3
+  -- print $ prPickList [HomozygousDominant, HomozygousRecessive] (newPopulation 1 2 3)
 
   let pop = newPopulation 2 2 2
+  let combos = replicateM 2 allOrganisms
+  -- let combos = [ [HomozygousDominant, HomozygousDominant], [HomozygousDominant, Heterozygous], [HomozygousDominant, HomozygousRecessive], [Heterozygous, Heterozygous], [Heterozygous, HomozygousRecessive], [HomozygousRecessive, HomozygousRecessive] ]
+
+  -- print $ prDominantOffspring HomozygousDominant HomozygousRecessive
+  -- print $ prPickList [HomozygousDominant, HomozygousRecessive] pop
+  print $ combos
 
   print $
-    ((prPickList [HomozygousDominent] pop) * 1.0) +
-    ((prPickList [Heterozygous, Heterozygous] pop) * 1.0/2.0) +
-    ((prPickList [Heterozygous, HomozygousRecessive] pop) * 1.0/4.0)
+    foldl (\acc comb -> acc + (prPickAndDominant (comb !! 0) (comb !! 1) pop)) 0.0 combos
