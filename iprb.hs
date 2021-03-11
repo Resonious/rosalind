@@ -22,6 +22,9 @@ import qualified Data.Map as Map
 data Organism = HomozygousDominent | Heterozygous | HomozygousRecessive
   deriving (Eq, Show, Ord, Bounded, Enum)
 
+data Allele = Dominent | Recessive
+  deriving (Eq, Show, Ord, Bounded, Enum)
+
 type Population = Map.Map Organism Int
 
 
@@ -64,8 +67,22 @@ prPickOne organism population =
   (popCount organism population) / (popTotal population)
 
 
+-- Probability that the given organism will pass a domiment allele
+prDomiment :: Organism -> Float
+prDomiment HomozygousDominent = 1.0
+prDomiment Heterozygous = 1.0/2.0
+prDomiment HomozygousRecessive = 0.0
+
+
 main = do
-  print $ popCount HomozygousRecessive $ newPopulation 1 2 3
-  print $ popTotal $ newPopulation 1 2 3
-  print $ popRemove HomozygousDominent $ newPopulation 1 2 3
-  print $ prPickList [HomozygousDominent, HomozygousRecessive] (newPopulation 1 2 3)
+  -- print $ popCount HomozygousRecessive $ newPopulation 1 2 3
+  -- print $ popTotal $ newPopulation 1 2 3
+  -- print $ popRemove HomozygousDominent $ newPopulation 1 2 3
+  -- print $ prPickList [HomozygousDominent, HomozygousRecessive] (newPopulation 1 2 3)
+
+  let pop = newPopulation 2 2 2
+
+  print $
+    ((prPickList [HomozygousDominent] pop) * 1.0) +
+    ((prPickList [Heterozygous, Heterozygous] pop) * 1.0/2.0) +
+    ((prPickList [Heterozygous, HomozygousRecessive] pop) * 1.0/4.0) +
